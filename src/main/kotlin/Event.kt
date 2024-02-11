@@ -9,18 +9,6 @@ sealed class Event() {
             "Request from source ${request.id.first} with id ${request.id.second} was produced at ${Statistic.getTime()}"
     }
 
-    class RequestTakenByDispatcher(val request: Request) : Event() {
-        fun getSourceId(): Int = request.getSourceId()
-        override fun toString(): String =
-            "Request from source ${request.id.first} with id ${request.id.second} was taken by dispatcher at ${Statistic.getTime()}"
-    }
-
-    class RequestAppearInBuffer(val request: Request) : Event() {
-        fun getSourceId(): Int = request.getSourceId()
-        override fun toString(): String =
-            "Request from source ${request.id.first} with id ${request.id.second} was appear in buffer at ${Statistic.getTime()}"
-    }
-
     class RequestEnded(val request: Request) : Event() {
         fun getSourceId(): Int = request.getSourceId()
         override fun toString(): String =
@@ -40,12 +28,6 @@ sealed class Event() {
             "Request from source ${request.id.first} with id ${request.id.second} started processing in device with id $deviceId at ${Statistic.getTime()}"
     }
 
-    class RequestProcessedOnDevice(val request: Request, val deviceId: Int) : Event() {
-        fun getSourceId(): Int = request.getSourceId()
-        override fun toString(): String =
-            "Request from source ${request.id.first} with id ${request.id.second} processed in device with id $deviceId at ${Statistic.getTime()}"
-    }
-
     class RequestReplacedByNew(
         private val oldRequest: Request, private val newRequest: Request, private val position: Int
     ) : Event() {
@@ -61,7 +43,7 @@ sealed class Event() {
 
     }
 
-    class DeviceFree(val deviceId: Int) : Event(){
+    class DeviceFree(val deviceId: Int, val workingTime: Long) : Event() {
         override fun toString(): String =
             "Device with id $deviceId free at ${Statistic.getTime()}"
 

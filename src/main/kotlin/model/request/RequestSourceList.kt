@@ -1,7 +1,6 @@
 package org.example.model.request
 
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class RequestSourceList(

@@ -16,7 +16,7 @@ object Probability {
         this.lambda = lambda
     }
 
-    fun wait() : Long = alpha
+    fun wait() : Long = beta
 
     fun uniformDistribution(): Long = alpha + ((beta - alpha) * Random.nextDouble(0.0, 1.0)).toLong()
 

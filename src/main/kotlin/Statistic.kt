@@ -14,13 +14,12 @@ object Statistic {
 
     private const val t = 1.643
     private const val b = 0.1
-    private const val a = 0.9
 
     private fun calculateN(pNew: Double): Long = ((t * t) * (1 - pNew) / (pNew * b * b)).toLong()
 
     fun needsContinue(): Boolean = producedRequestsForAll.get() < numOfRequests
 
-    var numOfRequests: Long = 10
+    private var numOfRequests: Long = 10
     private var isFirstRun: Boolean = true
     private var probabilityOfRejection: Double = 0.0
     private var probabilityOfRejectionOld: Double = 0.0
@@ -33,28 +32,22 @@ object Statistic {
     private lateinit var buffer: Buffer
 
     private val requestProducedPerSource = mutableMapOf<Int, Long>()
-    private val timeOfBeingPerSource = mutableMapOf<Int, Long>()
-    private val timeOfBufferPerSource = mutableMapOf<Int, Long>()
-    private val timeOfProcessingPerSource = mutableMapOf<Int, Long>()
+    private val timeOfBufferPerSource = mutableMapOf<Int, MutableList<Long>>()
+    private val timeOfProcessingPerSource = mutableMapOf<Int, MutableList<Long>>()
+    private val timeOfProcessingPerDevice = mutableMapOf<Int, Long>()
     private var requestProcessedPerSource = mutableMapOf<Int, Long>()
-    private var efficientOfUsing = mutableMapOf<Int, Long>()
     private var rejectionPerSource = mutableMapOf<Int, Long>()
 
     fun makeStep(event: Event) {
         when (event) {
-            is Event.RequestAppearInBuffer -> {}
-            is Event.RequestProcessedOnDevice -> {}
             is Event.RequestProduced -> {
                 requestProducedPerSource[event.getSourceId()] =
                     requestProducedPerSource.getOrDefault(event.getSourceId(), 0) + 1
             }
 
             is Event.RequestStartProcessingOnDevice -> {}
-            is Event.RequestTakenByDispatcher -> {}
             is Event.RequestWasRemoved -> {
-                timeOfBufferPerSource[event.getSourceId()] = timeOfBufferPerSource.getOrDefault(
-                    event.getSourceId(), 0
-                ) + (event.request.timeOfRemoved - event.request.timeOfBuffered)
+                timeOfBufferPerSource[event.getSourceId()]!!.add(event.request.timeOfRemoved - event.request.timeOfBuffered)
             }
 
             is Event.RequestReplacedByNew -> {
@@ -62,9 +55,13 @@ object Statistic {
             }
 
             is Event.RequestPlacedInBuffer -> {}
-            is Event.DeviceFree -> {}
+            is Event.DeviceFree -> {
+                timeOfProcessingPerDevice[event.deviceId] =
+                    timeOfProcessingPerDevice.getOrDefault(event.deviceId, 0) + event.workingTime
+            }
+
             is Event.RequestEnded -> {
-                timeOfProcessingPerSource[event.getSourceId()] = timeOfProcessingPerSource.getOrDefault(event.getSourceId(), 0) + event.request.timeOfProcessing
+                timeOfProcessingPerSource.get(event.getSourceId())!!.add(event.request.timeOfProcessing)
             }
         }
         i++
@@ -87,9 +84,10 @@ object Statistic {
             }
         }
         println("action $i - $event")
-
+        println(buffer.getState())
         if (mode == AppMode.STEP) {
             println(buffer.getState())
+            println("produced - ${producedRequestsForAll.get()}\nrejected - ${rejectionPerSource.values.sum()}")
             println("Press 'Enter' to resume")
             readlnOrNull()
         }
@@ -97,8 +95,8 @@ object Statistic {
 
     fun getTime(): Long = System.nanoTime() - start
 
-    fun setModelConfiguration(buffer: Buffer,
-        numOfSources: Int, numOfDevices: Int, bufferCapacity: Int, mode: AppMode
+    fun setModelConfiguration(
+        buffer: Buffer, numOfSources: Int, numOfDevices: Int, bufferCapacity: Int, mode: AppMode
     ) {
         this.numOfSources = numOfSources
         this.numOfDevices = numOfDevices
@@ -109,26 +107,20 @@ object Statistic {
             requestProducedPerSource[i] = 0
             requestProcessedPerSource[i] = 0
             rejectionPerSource[i] = 0
+            timeOfProcessingPerSource[i] = mutableListOf()
+            timeOfBufferPerSource[i] = mutableListOf()
         }
     }
 
     fun printAutoStatistic() {
-        end = System.currentTimeMillis()
+        end = System.nanoTime() - start
         println(state())
-        println(producedRequestsForAll)
+        println("produced - ${producedRequestsForAll.get()}\nrejected - ${rejectionPerSource.values.sum()}")
     }
 
-    //кол-во требований для каждого источника
-    //вероятность отказа источника
-    //среднее время пребывания заявок каждого источника
-    //среднее время ожидания заявок
-    //среднее время обслуживания
-    //дисперсии
-    //коэффициент использования прибора
     fun state(): String {
         val str = StringBuilder()
-        str.appendLine("Event calendar:")
-        str.append("n\t produced\t Prej\t Tbeing \t\t Tbuff \t\t Tproc\n")
+        str.append("n\t produced\t Prej\t Tbeing \t\t Tbuff \t\t\t Tproc \t\t\t Dbuff \t\t\t\t\t\t Dproc\n")
         for (source in 1..numOfSources) {
             val produced = requestProducedPerSource.getOrDefault(source, 0)
             var reject = 0.0
@@ -139,13 +131,47 @@ object Statistic {
                     source, 0
                 ) / produced.toDouble()
 
-                Tbuff = timeOfBufferPerSource.getOrDefault(source, 0) / produced.toDouble()
-                Tproc = timeOfProcessingPerSource.getOrDefault(source, 0) / produced.toDouble()
+                Tbuff = timeOfBufferPerSource[source]!!.sum() / timeOfBufferPerSource[source]!!.size.toDouble()
+                Tproc = timeOfProcessingPerSource[source]!!.sum() / timeOfProcessingPerSource[source]!!.size.toDouble()
+            }
+            var Dbuff = 0.0
+            var Dproc = 0.0
+            if (timeOfBufferPerSource[source]!!.size > 1) {
+                for (v in timeOfBufferPerSource[source]!!) {
+                    Dbuff += (v - Tbuff) * (v - Tbuff)
+                }
+                Dbuff /= (timeOfBufferPerSource[source]!!.size - 1)
+            }
+            if (timeOfProcessingPerSource[source]!!.size > 1) {
+                for (v in timeOfProcessingPerSource[source]!!) {
+                    Dproc += (v - Tproc) * (v - Tproc)
+                }
+                Dproc /= (timeOfProcessingPerSource[source]!!.size - 1)
             }
             str.append(
-                "${source} \t   ${produced}  \t${"%.4f".format(reject)} \t${"%.2f".format(Tbuff + Tproc)} \t${"%.2f".format(Tbuff)} \t${
-                    "%.2f".format(
-                        Tproc
+                "${source} \t \t  ${produced}  \t${
+                    "%.4f".format(reject)
+                } \t${
+                    "%.2f".format(Tbuff + Tproc)
+                } \t${
+                    "%.2f".format(Tbuff)
+                } \t${
+                    "%.2f".format(Tproc)
+                } \t ${
+                    "%.2f".format(Dbuff)
+                } \t ${
+                    "%.2f".format(Dproc)
+                }\n"
+            )
+        }
+        str.append("\nn \t K\n")
+        for (device in 1..numOfDevices) {
+            str.append(
+                "$device \t ${
+                    "%.4f".format(
+                        timeOfProcessingPerDevice.getOrDefault(
+                            device, 0
+                        ) / end.toDouble()
                     )
                 }\n"
             )

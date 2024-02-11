@@ -1,12 +1,10 @@
 package org.example.model.request
 
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.sync.withLock
 import org.example.Event
 import org.example.EventBus
 import org.example.Probability
 import org.example.Statistic
-import java.util.concurrent.atomic.AtomicInteger
 
 class RequestSource(private val id: Int) {
     suspend fun startGeneratingRequests() {
