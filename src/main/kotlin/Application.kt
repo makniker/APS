@@ -28,10 +28,10 @@ class Application(
             buffer, numOfSources, numOfDevices, bufferCapacity, mode
         )
         Probability.setProbability(alpha, beta, lambda)
+        deviceList.initList()
         val job2 = launch { inputDispatcher.startProcessingRequest() }
         val job3 = launch { outputDispatcher.startProcessing() }
         val job = launch { requestSourceList.startGeneratingRequests() }
-        deviceList.initList()
         job.join()
         job3.join()
         job2.cancel()

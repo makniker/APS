@@ -24,17 +24,17 @@ class Buffer(private val bufferCapacity: Int) {
         if (isFull()) {
             replaceOldestRequest(request)
         } else {
+            request.timeOfBuffered = Statistic.getTime()
             buffer.add(request)
             EventBus.produceEvent(Event.RequestPlacedInBuffer(request, buffer.indexOf(request)))
         }
-        request.timeOfBuffered = Statistic.getTime()
     }
 
     private suspend fun replaceOldestRequest(request: Request) {
         val i = buffer.indexOf(buffer.minBy { it.timeOfCreation })
         EventBus.produceEvent(Event.RequestReplacedByNew(buffer[i], request, i))
-        buffer[i] = request
         request.timeOfBuffered = Statistic.getTime()
+        buffer[i] = request
     }
 
     suspend fun getNewestRequest(): Request {

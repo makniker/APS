@@ -19,7 +19,7 @@ object Statistic {
 
     fun needsContinue(): Boolean = producedRequestsForAll.get() < numOfRequests
 
-    private var numOfRequests: Long = 10
+    private var numOfRequests: Long = 100
     private var isFirstRun: Boolean = true
     private var probabilityOfRejection: Double = 0.0
     private var probabilityOfRejectionOld: Double = 0.0
@@ -84,7 +84,6 @@ object Statistic {
             }
         }
         println("action $i - $event")
-        println(buffer.getState())
         if (mode == AppMode.STEP) {
             println(buffer.getState())
             println("produced - ${producedRequestsForAll.get()}\nrejected - ${rejectionPerSource.values.sum()}")
@@ -113,7 +112,6 @@ object Statistic {
     }
 
     fun printAutoStatistic() {
-        end = System.nanoTime() - start
         println(state())
         println("produced - ${producedRequestsForAll.get()}\nrejected - ${rejectionPerSource.values.sum()}")
     }
@@ -126,27 +124,26 @@ object Statistic {
             var reject = 0.0
             var Tbuff = 0.0
             var Tproc = 0.0
+            var Dbuff = 0.0
+            var Dproc = 0.0
             if (produced != 0L) {
                 reject = rejectionPerSource.getOrDefault(
                     source, 0
                 ) / produced.toDouble()
-
-                Tbuff = timeOfBufferPerSource[source]!!.sum() / timeOfBufferPerSource[source]!!.size.toDouble()
-                Tproc = timeOfProcessingPerSource[source]!!.sum() / timeOfProcessingPerSource[source]!!.size.toDouble()
-            }
-            var Dbuff = 0.0
-            var Dproc = 0.0
-            if (timeOfBufferPerSource[source]!!.size > 1) {
-                for (v in timeOfBufferPerSource[source]!!) {
-                    Dbuff += (v - Tbuff) * (v - Tbuff)
+                if (timeOfBufferPerSource[source]!!.size > 1) {
+                    Tbuff = timeOfBufferPerSource[source]!!.sum() / timeOfBufferPerSource[source]!!.size.toDouble()
+                    for (v in timeOfBufferPerSource[source]!!) {
+                        Dbuff += (v - Tbuff) * (v - Tbuff)
+                    }
+                    Dbuff /= (timeOfBufferPerSource[source]!!.size - 1)
                 }
-                Dbuff /= (timeOfBufferPerSource[source]!!.size - 1)
-            }
-            if (timeOfProcessingPerSource[source]!!.size > 1) {
-                for (v in timeOfProcessingPerSource[source]!!) {
-                    Dproc += (v - Tproc) * (v - Tproc)
+                if (timeOfProcessingPerSource[source]!!.size > 1) {
+                    Tproc = timeOfProcessingPerSource[source]!!.sum() / timeOfProcessingPerSource[source]!!.size.toDouble()
+                    for (v in timeOfProcessingPerSource[source]!!) {
+                        Dproc += (v - Tproc) * (v - Tproc)
+                    }
+                    Dproc /= (timeOfProcessingPerSource[source]!!.size - 1)
                 }
-                Dproc /= (timeOfProcessingPerSource[source]!!.size - 1)
             }
             str.append(
                 "${source} \t \t  ${produced}  \t${
@@ -165,6 +162,7 @@ object Statistic {
             )
         }
         str.append("\nn \t K\n")
+        end = System.nanoTime() - start
         for (device in 1..numOfDevices) {
             str.append(
                 "$device \t ${
