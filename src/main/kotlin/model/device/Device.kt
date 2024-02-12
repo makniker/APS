@@ -16,8 +16,6 @@ class Device(val id: Int) {
     fun getTime(): Long = timeOfFree
 
     suspend fun setBusy(request: Request) {
-
-        isBusy = true
         EventBus.produceEvent(Event.RequestStartProcessingOnDevice(request, id))
         val delay = Probability.expDistribution()
         request.timeOfProcessing = delay * 1000000
@@ -25,8 +23,7 @@ class Device(val id: Int) {
         request.timeOfFinish = Statistic.getTime()
         timeOfFree = request.timeOfFinish
         isBusy = false
+        EventBus.produceEvent(Event.DeviceFree(id, request.timeOfProcessing))
         EventBus.produceEvent(Event.RequestEnded(request))
-        EventBus.produceEvent(Event.DeviceFree(id, delay * 1000000))
-
     }
 }

@@ -65,7 +65,7 @@ object Statistic {
             }
         }
         i++
-        if (numOfRequests <= requestProducedPerSource.values.sum()) {
+        if (numOfRequests <= requestProducedPerSource.values.sum() && numOfRequests < 10000) {
             if (isFirstRun) {
                 probabilityOfRejection = calculateProbabilityOfRejection()
                 if (probabilityOfRejection != 0.0) {
@@ -146,7 +146,7 @@ object Statistic {
                 }
             }
             str.append(
-                "${source} \t \t  ${produced}  \t${
+                "$source \t \t  $produced  \t${
                     "%.4f".format(reject)
                 } \t${
                     "%.2f".format(Tbuff + Tproc)
