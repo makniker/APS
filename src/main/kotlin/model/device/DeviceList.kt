@@ -8,7 +8,7 @@ import org.example.EventBus
 class DeviceList(private val numOfDevices: Int) {
     private val list = (1..numOfDevices).map { Device(it) }
     private var pointer: Int = 0
-    val mutex = Mutex()
+    private val mutex = Mutex()
 
     suspend fun initList() {
         for (i in 1..numOfDevices) {
@@ -16,21 +16,29 @@ class DeviceList(private val numOfDevices: Int) {
         }
     }
 
-    fun getState() {
+    fun getState(): String {
+        val sb = StringBuilder()
         for (i in list) {
-            println(i.isBusy)
+            sb.append("$i - ")
+            if (i.isBusy()) {
+                sb.appendLine("Busy")
+            } else {
+                sb.appendLine("Free")
+            }
         }
+        sb.appendLine("Pointer position - $pointer")
+        return sb.toString()
     }
 
     fun isAllFree(): Boolean =
-        list.none { it.isBusy }
+        list.none { it.isBusy() }
 
     suspend fun getNewestDevice() : Device = mutex.withLock {
-        var d = list.subList(pointer, list.size).firstOrNull { !it.isBusy }
+        var d = list.subList(pointer, list.size).firstOrNull { !it.isBusy() }
         if (d == null) {
-            d = list.subList(0, pointer).first { !it.isBusy }
+            d = list.subList(0, pointer).first { !it.isBusy() }
         }
-        d.isBusy = true
+        //d.setBusy()
         pointer = list.indexOf(d)
         return d
     }

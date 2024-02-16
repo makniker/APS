@@ -2,7 +2,7 @@ package org.example
 
 import org.example.model.request.Request
 
-sealed class Event() {
+sealed class Event {
     class RequestProduced(val request: Request) : Event() {
         fun getSourceId(): Int = request.getSourceId()
         override fun toString(): String =

@@ -1,6 +1,5 @@
 package org.example
 
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.example.model.Buffer
@@ -25,7 +24,7 @@ class Application(
     private val outputDispatcher = OutputDispatcher(buffer, deviceList)
     fun start() = runBlocking {
         Statistic.setModelConfiguration(
-            buffer, numOfSources, numOfDevices, bufferCapacity, mode
+            deviceList, buffer, numOfSources, numOfDevices, bufferCapacity, mode
         )
         Probability.setProbability(alpha, beta, lambda)
         deviceList.initList()

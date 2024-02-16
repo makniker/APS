@@ -1,42 +1,42 @@
 package org.example
 
 import org.example.model.Buffer
+import org.example.model.device.DeviceList
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.abs
 
 object Statistic {
     private val start: Long = System.nanoTime()
     private var end: Long = 0
-
-    private fun calculateProbabilityOfRejection(): Double {
-        return rejectionPerSource.values.sum() / requestProducedPerSource.values.sum().toDouble()
-    }
-
     private const val t = 1.643
     private const val b = 0.1
-
-    private fun calculateN(pNew: Double): Long = ((t * t) * (1 - pNew) / (pNew * b * b)).toLong()
-
-    fun needsContinue(): Boolean = producedRequestsForAll.get() < numOfRequests
-
     private var numOfRequests: Long = 100
     private var isFirstRun: Boolean = true
     private var probabilityOfRejection: Double = 0.0
     private var probabilityOfRejectionOld: Double = 0.0
-    var producedRequestsForAll: AtomicLong = AtomicLong()
+    private var producedRequestsForAll: AtomicLong = AtomicLong()
     private var numOfSources: Int = 1
     private var numOfDevices: Int = 10
     private var bufferCapacity: Int = 3
     private var mode = AppMode.AUTO
     private var i = 0
     private lateinit var buffer: Buffer
-
+    private lateinit var deviceList: DeviceList
     private val requestProducedPerSource = mutableMapOf<Int, Long>()
     private val timeOfBufferPerSource = mutableMapOf<Int, MutableList<Long>>()
     private val timeOfProcessingPerSource = mutableMapOf<Int, MutableList<Long>>()
     private val timeOfProcessingPerDevice = mutableMapOf<Int, Long>()
     private var requestProcessedPerSource = mutableMapOf<Int, Long>()
     private var rejectionPerSource = mutableMapOf<Int, Long>()
+
+    private fun calculateProbabilityOfRejection(): Double {
+        return rejectionPerSource.values.sum() / requestProducedPerSource.values.sum().toDouble()
+    }
+
+    private fun calculateN(pNew: Double): Long = ((t * t) * (1 - pNew) / (pNew * b * b)).toLong()
+
+    fun needsContinue(): Boolean = producedRequestsForAll.get() < numOfRequests
+    fun increment() = producedRequestsForAll.getAndIncrement()
 
     fun makeStep(event: Event) {
         when (event) {
@@ -85,6 +85,9 @@ object Statistic {
         }
         println("action $i - $event")
         if (mode == AppMode.STEP) {
+            println(state())
+            //источники, буфер, приборы, указатели, % отказа и остальные значения согласно методическому пособию
+            println(deviceList.getState())
             println(buffer.getState())
             println("produced - ${producedRequestsForAll.get()}\nrejected - ${rejectionPerSource.values.sum()}")
             println("Press 'Enter' to resume")
@@ -95,13 +98,14 @@ object Statistic {
     fun getTime(): Long = System.nanoTime() - start
 
     fun setModelConfiguration(
-        buffer: Buffer, numOfSources: Int, numOfDevices: Int, bufferCapacity: Int, mode: AppMode
+        deviceList: DeviceList, buffer: Buffer, numOfSources: Int, numOfDevices: Int, bufferCapacity: Int, mode: AppMode
     ) {
         this.numOfSources = numOfSources
         this.numOfDevices = numOfDevices
         this.bufferCapacity = bufferCapacity
         this.mode = mode
         this.buffer = buffer
+        this.deviceList = deviceList
         for (i in 1..numOfSources) {
             requestProducedPerSource[i] = 0
             requestProcessedPerSource[i] = 0
@@ -116,7 +120,7 @@ object Statistic {
         println("produced - ${producedRequestsForAll.get()}\nrejected - ${rejectionPerSource.values.sum()}")
     }
 
-    fun state(): String {
+    private fun state(): String {
         val str = StringBuilder()
         str.append("n\t produced\t Prej\t Tbeing \t\t Tbuff \t\t\t Tproc \t\t\t Dbuff \t\t\t\t\t\t Dproc\n")
         for (source in 1..numOfSources) {
@@ -138,7 +142,8 @@ object Statistic {
                     Dbuff /= (timeOfBufferPerSource[source]!!.size - 1)
                 }
                 if (timeOfProcessingPerSource[source]!!.size > 1) {
-                    Tproc = timeOfProcessingPerSource[source]!!.sum() / timeOfProcessingPerSource[source]!!.size.toDouble()
+                    Tproc =
+                        timeOfProcessingPerSource[source]!!.sum() / timeOfProcessingPerSource[source]!!.size.toDouble()
                     for (v in timeOfProcessingPerSource[source]!!) {
                         Dproc += (v - Tproc) * (v - Tproc)
                     }

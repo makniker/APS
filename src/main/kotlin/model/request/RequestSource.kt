@@ -10,7 +10,7 @@ class RequestSource(private val id: Int) {
     suspend fun startGeneratingRequests() {
         var i = 1
         while (Statistic.needsContinue()) {
-            Statistic.producedRequestsForAll.getAndIncrement()
+            Statistic.increment()
             val request = Request(id to i++, Statistic.getTime())
             EventBus.produceEvent(Event.RequestProduced(request))
             delay(Probability.uniformDistribution())
