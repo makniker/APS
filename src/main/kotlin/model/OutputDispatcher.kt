@@ -14,13 +14,11 @@ import org.example.Statistic.needsContinue
 import org.example.model.device.DeviceList
 
 class OutputDispatcher(private val buffer: Buffer, private val deviceList: DeviceList) {
-    val mutex = Mutex()
     suspend fun startProcessing() = coroutineScope {
         try {
-            EventBus.events.filter { event ->
+            EventBus.bus.filter { event ->
                 event is Event.DeviceFree
             }.collect {
-                //mutex.withLock {
                     while (buffer.isEmpty()) {
                         delay(Probability.wait())
                         if (!needsContinue() && deviceList.isAllFree() && buffer.isEmpty()) {
@@ -30,7 +28,6 @@ class OutputDispatcher(private val buffer: Buffer, private val deviceList: Devic
                     val request = buffer.getNewestRequest()
                     val device = deviceList.getNewestDevice()
                     launch { device.setBusy(request) }
-                //}
             }
         } catch (e: Exception) {
             println("Simulation end! Results: ")

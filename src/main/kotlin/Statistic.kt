@@ -30,7 +30,8 @@ object Statistic {
     private var rejectionPerSource = mutableMapOf<Int, Long>()
 
     private fun calculateProbabilityOfRejection(): Double {
-        return rejectionPerSource.values.sum() / requestProducedPerSource.values.sum().toDouble()
+        return if (rejectionPerSource.values.sum() == 0L) 0.0 else rejectionPerSource.values.sum() / requestProducedPerSource.values.sum()
+            .toDouble()
     }
 
     private fun calculateN(pNew: Double): Long = ((t * t) * (1 - pNew) / (pNew * b * b)).toLong()
@@ -65,7 +66,7 @@ object Statistic {
             }
         }
         i++
-        if (numOfRequests <= requestProducedPerSource.values.sum() && numOfRequests < 10000) {
+        if (numOfRequests <= requestProducedPerSource.values.sum() && numOfRequests < 1000) {
             if (isFirstRun) {
                 probabilityOfRejection = calculateProbabilityOfRejection()
                 if (probabilityOfRejection != 0.0) {
@@ -85,8 +86,7 @@ object Statistic {
         }
         println("action $i - $event")
         if (mode == AppMode.STEP) {
-            println(state())
-            //источники, буфер, приборы, указатели, % отказа и остальные значения согласно методическому пособию
+            println(getState())
             println(deviceList.getState())
             println(buffer.getState())
             println("produced - ${producedRequestsForAll.get()}\nrejected - ${rejectionPerSource.values.sum()}")
@@ -116,11 +116,11 @@ object Statistic {
     }
 
     fun printAutoStatistic() {
-        println(state())
+        println(getState())
         println("produced - ${producedRequestsForAll.get()}\nrejected - ${rejectionPerSource.values.sum()}")
     }
 
-    private fun state(): String {
+    private fun getState(): String {
         val str = StringBuilder()
         str.append("n\t produced\t Prej\t Tbeing \t\t Tbuff \t\t\t Tproc \t\t\t Dbuff \t\t\t\t\t\t Dproc\n")
         for (source in 1..numOfSources) {
@@ -179,6 +179,7 @@ object Statistic {
                 }\n"
             )
         }
+        str.appendLine("Probability of rejection - ${calculateProbabilityOfRejection()}")
         return str.toString()
     }
 }

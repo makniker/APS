@@ -38,7 +38,6 @@ class DeviceList(private val numOfDevices: Int) {
         if (d == null) {
             d = list.subList(0, pointer).first { !it.isBusy() }
         }
-        //d.setBusy()
         pointer = list.indexOf(d)
         return d
     }

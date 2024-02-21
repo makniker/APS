@@ -7,7 +7,7 @@ import org.example.EventBus
 
 class InputDispatcher(private val buffer: Buffer) {
     suspend fun startProcessingRequest() {
-        EventBus.events.filterIsInstance<Event.RequestProduced>().collect { value ->
+        EventBus.bus.filterIsInstance<Event.RequestProduced>().collect { value ->
             buffer.putRequest(value.request)
         }
     }
